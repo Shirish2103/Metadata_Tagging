@@ -14,17 +14,13 @@ build/
 eggs/
 .eggs/
 
-# Datasets, Index & Cached Outputs
+# Datasets & Temporary Files
 data/
-outputs/
-*.json.gz
 *.sqlite
 *.db
-index.csv
 
 # Frontend & Node
 frontend/node_modules/
-frontend/dist/
 frontend/dist-ssr/
 *.log
 npm-debug.log*
