@@ -1,5 +1,7 @@
 import logging
 import sys
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 import pandas as pd
 
@@ -15,11 +17,6 @@ from src import corpus, pipeline
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("api")
-
-app = FastAPI(title="ScriptTagger API", version="1.0.0")
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
-)
 
 try:
     INDEX = corpus.load_index()
@@ -37,21 +34,55 @@ class TagRequest(BaseModel):
     title: str = ""
     use_transformers: bool = False
     include_dialogue: bool = False
+    use_llm: bool = False
 
 
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
+
+
+def _warm_up():
+    """Preload optional heavyweight models so the first request isn't slow."""
+    try:
+        from src import classify, ner
+
+        classify.load_classifier()
+        ner.load_spacy("en_core_web_lg")
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Model warm-up failed (non-fatal): %s", exc)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=_warm_up, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="ScriptTagger API", version="1.1.0", lifespan=lifespan)
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
+)
+
 
 @app.get("/")
 def root():
     index_file = DIST_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
-    return {"app": "ScriptTagger", "endpoints": ["/health", "/scripts", "/tag", "/metadata/{id}", "/scripts/{id}"]}
+    return {
+        "app": "ScriptTagger",
+        "endpoints": ["/health", "/scripts", "/tag", "/tag/upload", "/metadata/{id}", "/scripts/{id}"],
+    }
 
 
 @app.get("/api/info")
 def info():
-    return {"app": "ScriptTagger", "endpoints": ["/health", "/scripts", "/tag", "/metadata/{id}", "/scripts/{id}"]}
+    return {
+        "app": "ScriptTagger",
+        "endpoints": ["/health", "/scripts", "/tag", "/tag/upload", "/metadata/{id}", "/scripts/{id}"],
+    }
 
 
 @app.get("/health")
@@ -71,6 +102,8 @@ def scripts(query: str = "", limit: int = 0, offset: int = 0):
         df = df[mask]
     if limit > 0:
         df = df.iloc[offset : offset + limit]
+    elif offset > 0:
+        df = df.iloc[offset:]
     rows = []
     for _, r in df.iterrows():
         g_val = r.get("genres")
@@ -104,7 +137,10 @@ def tag(req: TagRequest):
         cached = pipeline.load_cached_metadata(req.imdb_id)
         if cached is not None and not req.use_transformers:
             has_dialogue = any(bool(s.get("dialogue")) for s in cached.get("segments", []))
-            if not req.include_dialogue or has_dialogue:
+            has_summary = bool(cached.get("summary"))
+            needs_dialogue = req.include_dialogue and not has_dialogue
+            needs_summary = req.use_llm and not has_summary
+            if not needs_dialogue and not needs_summary:
                 return cached
         try:
             text = corpus.read_script(req.imdb_id)
@@ -116,6 +152,7 @@ def tag(req: TagRequest):
             title=corpus.metadata_for(req.imdb_id).get("title", ""),
             use_transformers=req.use_transformers,
             include_dialogue=req.include_dialogue,
+            use_llm=req.use_llm,
         )
         pipeline.save_metadata(req.imdb_id, meta)
         return meta
@@ -126,19 +163,26 @@ def tag(req: TagRequest):
             title=req.title,
             use_transformers=req.use_transformers,
             include_dialogue=req.include_dialogue,
+            use_llm=req.use_llm,
         )
     raise HTTPException(400, "provide either imdb_id or text")
 
 
 @app.post("/tag/upload")
 @app.post("/api/tag/upload")
-async def tag_upload(file: UploadFile = File(...), use_transformers: bool = False):
+async def tag_upload(
+    file: UploadFile = File(...),
+    use_transformers: bool = False,
+    include_dialogue: bool = False,
+    use_llm: bool = False,
+):
     raw = (await file.read()).decode("utf-8", errors="replace")
     return pipeline.tag_script(
         raw,
         title=file.filename or "",
         use_transformers=use_transformers,
-        include_dialogue=False,
+        include_dialogue=include_dialogue,
+        use_llm=use_llm,
     )
 
 
@@ -162,8 +206,5 @@ def metadata(imdb_id: str):
     return meta
 
 
-from fastapi.staticfiles import StaticFiles
-
-DIST_DIR = PROJECT_ROOT / "frontend" / "dist"
 if DIST_DIR.exists():
     app.mount("/", StaticFiles(directory=str(DIST_DIR), html=True), name="static")

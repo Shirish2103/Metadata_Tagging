@@ -1,66 +1,53 @@
-import React, { useState } from 'react';
-import { Download, Copy, Check, FileJson } from 'lucide-react';
+import React from 'react';
+import { Copy, Download, Check, FileCode2 } from 'lucide-react';
 
-export default function JsonViewer({ meta, title, imdbId }) {
-  const [copied, setCopied] = useState(false);
-
+export default function JsonViewer({ meta, onCopy, copied }) {
   if (!meta) return null;
 
-  const jsonString = JSON.stringify(meta, null, 2);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(jsonString);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleDownload = () => {
-    const blob = new Blob([jsonString], { type: 'application/json' });
+  const json = JSON.stringify(meta, null, 2);
+  const download = () => {
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${imdbId || title || 'script'}.metadata.json`;
-    document.body.appendChild(a);
+    a.download = `${meta.title || 'metadata'}.json`;
     a.click();
-    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="ui-card rounded-xl p-5 space-y-4 animate-fade-in">
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-[#1E2638] pb-3">
-        <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <FileJson className="w-4 h-4 text-blue-400" />
-            Raw Metadata JSON
-          </h3>
-          <p className="text-xs text-slate-400">Complete structured output JSON object</p>
+    <div className="ui-card rounded-xl overflow-hidden animate-fade-in">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#E4DCCB] bg-[#F1EDE4]">
+        <div className="flex items-center gap-2 text-xs font-semibold text-[#221E1A]">
+          <FileCode2 className="w-4 h-4 text-[#E5484D]" aria-hidden="true" />
+          metadata.json
+          <span className="text-[#A49B8B] font-mono">({(json.length / 1024).toFixed(1)} KB)</span>
         </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2">
           <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium bg-[#0B0E14] hover:bg-slate-800 text-slate-300 border border-[#1E2638] transition-colors w-full sm:w-auto justify-center"
+            type="button"
+            onClick={onCopy}
+            className="btn-ghost !py-1.5 !px-2.5 text-xs"
+            aria-label="Copy metadata JSON"
           >
-            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
-            {copied ? 'Copied' : 'Copy JSON'}
+            {copied ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-[#178A4C]" aria-hidden="true" /> Copied
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5" aria-hidden="true" /> Copy
+              </>
+            )}
           </button>
-
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors w-full sm:w-auto justify-center"
-          >
-            <Download className="w-3.5 h-3.5" />
-            Download .json
+          <button type="button" onClick={download} className="btn-primary !py-1.5 !px-2.5 text-xs">
+            <Download className="w-3.5 h-3.5" aria-hidden="true" /> Download
           </button>
         </div>
       </div>
-
-      <div className="bg-[#0B0E14] rounded-lg p-4 border border-[#1E2638] max-h-[500px] overflow-auto">
-        <pre className="text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
-          {jsonString}
-        </pre>
-      </div>
+      <pre className="p-4 text-xs leading-relaxed text-[#221E1A] bg-[#F7F3EC] font-mono overflow-auto max-h-[520px]">
+        {json}
+      </pre>
     </div>
   );
 }

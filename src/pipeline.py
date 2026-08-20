@@ -17,6 +17,7 @@ def tag_script(
     title: str = "",
     use_transformers: bool = False,
     include_dialogue: bool = False,
+    use_llm: bool = False,
 ) -> dict:
     """Run the full pipeline on raw script text and return a metadata dict."""
     parsed = parser.parse_script(script_text, title=title, imdb_id=imdb_id)
@@ -140,6 +141,15 @@ def tag_script(
         "segments": seg_meta,
         "speakers": speaker_stats,
     }
+
+    if use_llm:
+        from src import summarize
+
+        summary = summarize.generate(
+            "\n".join(d.text for d in parsed.all_dialogue), title=meta["title"]
+        )
+        if summary:
+            meta["summary"] = summary
     return meta
 
 

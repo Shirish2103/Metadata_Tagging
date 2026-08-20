@@ -81,7 +81,11 @@ def script_path(imdbid: str) -> Path:
 
 
 def read_script(imdbid: str) -> str:
-    return script_path(imdbid).read_text(encoding="utf-8", errors="replace")
+    p = script_path(imdbid)
+    try:
+        return p.read_text(encoding="utf-8", errors="replace")
+    except OSError as exc:
+        raise KeyError(f"script file for {imdbid} is not readable: {exc}") from exc
 
 
 def metadata_for(imdbid: str) -> dict:

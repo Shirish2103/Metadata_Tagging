@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
@@ -6,11 +7,17 @@ OUTPUTS_DIR = PROJECT_ROOT / "outputs"
 MODELS_DIR = DATA_DIR / "models"
 INDEX_CSV = DATA_DIR / "corpus_index.csv"
 
+# Dataset root resolution: DATASET_ROOT env var first, then a list of
+# known extraction locations, then reasonable local defaults.
 POSSIBLE_ROOTS = [
+    Path(os.environ.get("DATASET_ROOT", "")),
     Path("D:/Downloads/archive"),
     Path("C:/Downloads/archive"),
     Path("/home/shaury/Desktop/machine learning/dataset/archive (3)"),
+    PROJECT_ROOT / "data" / "archive",
+    PROJECT_ROOT / "dataset",
 ]
+POSSIBLE_ROOTS = [p for p in POSSIBLE_ROOTS if str(p)]
 
 DATASET_ROOT = POSSIBLE_ROOTS[0]
 for p in POSSIBLE_ROOTS:

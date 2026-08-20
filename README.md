@@ -9,7 +9,8 @@ Generative-AI / NLP pipeline that ingests a movie screenplay (a transcript of me
 - **Sentiment & emotion** — VADER baseline + optional transformer emotion model (RoBERTa)
 - **Content classification** — multi-label genre classifier trained on screenplay text
 - **Ultra-Fast Storage** — `.json.gz` Gzip compression (~900MB reduced to ~100MB)
-- **React 19 Web Dashboard** — Glassmorphism dark-mode React + Tailwind + Recharts frontend
+- **React 19 Web Dashboard** — dark-mode React + Tailwind + Recharts frontend (the only UI)
+- **Optional transformer emotion & LLM synopsis** — toggleable per-request, no hard dependencies
 
 ---
 
@@ -28,8 +29,7 @@ screenplay (.txt)
  src/classify.py       multi-label genre classifier (sklearn)
  src/pipeline.py       orchestrates the modules → compressed metadata (.json.gz)
  api/main.py           FastAPI service & Static Frontend host (http://localhost:8000)
- frontend/             React 19 + Vite + Tailwind + Recharts Web Dashboard
- ui/app.py             Streamlit dashboard (http://localhost:8501)
+ frontend/             React 19 + Vite + Tailwind + Recharts Web Dashboard (single UI)
  evaluate/evaluate.py  offline evaluation vs rule_based/BERT annotations
  scripts/tag_corpus.py multi-threaded parallel batch processor
 ```
@@ -76,8 +76,7 @@ This project is fully Dockerized. You do not need to install Python, PyTorch, or
    ```
 
 3. **Access the application:**
-   - **React / FastAPI Web Application:** [http://localhost:8000](http://localhost:8000)
-   - **Streamlit Dashboard:** [http://localhost:8501](http://localhost:8501)
+   - **React Web App (served by FastAPI):** [http://localhost:8000](http://localhost:8000)
 
 ---
 
@@ -152,14 +151,7 @@ npm run dev
 ```
 - Opens at [http://localhost:5173](http://localhost:5173) with automatic proxying to FastAPI port 8000.
 
-### 2. Run Streamlit UI Dashboard
-
-```bash
-streamlit run ui/app.py
-```
-- Opens automatically at [http://localhost:8501](http://localhost:8501)
-
-### 3. Run Multi-Threaded Parallel Batch Processor
+### 2. Run Multi-Threaded Parallel Batch Processor
 
 To generate `.json.gz` compressed metadata for all 2,800+ scripts using multi-threading:
 
@@ -167,7 +159,7 @@ To generate `.json.gz` compressed metadata for all 2,800+ scripts using multi-th
 python scripts/tag_corpus.py --workers 8
 ```
 
-### 4. Run Model Evaluation Benchmark
+### 3. Run Model Evaluation Benchmark
 
 To evaluate parser and tagging accuracy against annotated ground truth:
 
@@ -180,7 +172,11 @@ python evaluate/evaluate.py --sample 30
 ## Dataset
 
 Kaggle — [Movie Scripts Corpus](https://www.kaggle.com/datasets/gufukuro/movie-scripts-corpus)
-(`archive (3)` extracted to the path configured in `src/config.py`):
+
+Set the `DATASET_ROOT` environment variable to the directory containing the extracted
+`archive (3)` dataset (the directory that contains `screenplay_data/` and
+`movie_metadata/`). If unset, the project falls back to a list of common paths.
+The built-in corpus index and cached outputs live in `data/` and `outputs/` respectively:
 - `screenplay_data/raw_texts` — 2,857 screenplay transcripts
 - `screenplay_data/rule_based_annotations` — ScreenPy scene/speaker ground truth (2,607)
 - `screenplay_data/BERT_annotations`, `manual_annotations` — line-type labels
