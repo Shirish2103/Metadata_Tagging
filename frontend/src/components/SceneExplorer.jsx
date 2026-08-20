@@ -1,129 +1,132 @@
 import React, { useState } from 'react';
 import { Film, MapPin, Clock, Users, MessageSquare, Tag } from 'lucide-react';
+import { cn } from '../lib/utils';
 
 export default function SceneExplorer({ segments }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   if (!segments || segments.length === 0) {
     return (
-      <div className="ui-card rounded-xl p-8 text-center text-slate-400">
-        No scene segments parsed for this script.
+      <div className="ui-card rounded-xl p-10 text-center">
+        <Film className="w-6 h-6 text-[#A49B8B] mx-auto mb-2" aria-hidden="true" />
+        <p className="text-sm text-[#6E675B]">No scene segments parsed for this script.</p>
       </div>
     );
   }
 
-  const currentScene = segments[selectedIndex] || segments[0];
+  const currentScene = segments[Math.min(selectedIndex, segments.length - 1)] || segments[0];
   const dialogueLines = currentScene.dialogue || [];
   const topics = currentScene.topics || [];
   const sentiment = currentScene.sentiment || {};
   const emotion = currentScene.emotion || {};
 
-  return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Scene Picker Bar */}
-      <div className="ui-card rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <Film className="w-4 h-4 text-blue-400 shrink-0" />
-          <span className="text-xs font-semibold text-slate-300">Select Scene ({segments.length} total):</span>
-        </div>
+  const toneChip =
+    sentiment.label === 'positive'
+      ? 'chip-pos'
+      : sentiment.label === 'negative'
+      ? 'chip-neg'
+      : 'chip-neutral';
 
+  return (
+    <div className="flex flex-col gap-4 animate-fade-in">
+      {/* Scene picker */}
+      <div className="ui-card ui-card--top rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <Film className="w-4 h-4 text-[#E5484D] shrink-0" aria-hidden="true" />
+          <span className="eyebrow">Film Reel · {segments.length} Scenes</span>
+        </div>
         <select
           value={selectedIndex}
           onChange={(e) => setSelectedIndex(Number(e.target.value))}
-          className="w-full sm:w-96 bg-[#0B0E14] text-slate-100 text-xs rounded-lg px-3 py-2 border border-[#1E2638] focus:outline-none focus:border-blue-500 font-mono"
+          aria-label="Select scene"
+          className="field w-full sm:w-96 font-mono cursor-pointer"
         >
           {segments.map((s, idx) => (
             <option key={idx} value={idx}>
-              Scene {s.segment_id || idx + 1}: {s.heading || `Scene ${idx + 1}`} ({s.start} - {s.end})
+              Scene {s.segment_id || idx + 1}: {s.heading || `Scene ${idx + 1}`} ({s.start} – {s.end})
             </option>
           ))}
         </select>
       </div>
 
-      {/* Selected Scene Detail Card */}
-      <div className="ui-card rounded-xl p-6 space-y-6">
-        
-        {/* Scene Heading Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1E2638] pb-4">
-          <div>
-            <div className="flex items-center gap-2 text-xs font-medium text-blue-400">
-              <span>Scene #{currentScene.segment_id || selectedIndex + 1}</span>
-              <span>·</span>
-              <span className="flex items-center gap-1 font-mono text-slate-400">
-                <Clock className="w-3 h-3" /> {currentScene.start} – {currentScene.end}
+      {/* Scene detail */}
+      <div className="ui-card rounded-xl p-6 flex flex-col gap-6">
+        {/* Heading banner */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-[#E4DCCB]">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#6E675B]">
+              <span className="chip chip-crimson">Scene #{currentScene.segment_id || selectedIndex + 1}</span>
+              <span className="flex items-center gap-1 font-mono text-[#6E675B]">
+                <Clock className="w-3 h-3" aria-hidden="true" /> {currentScene.start} – {currentScene.end}
               </span>
             </div>
-            <h3 className="text-xl font-bold text-white mt-1">
+            <h3 className="font-display text-2xl tracking-wide text-[#221E1A] mt-2 leading-none break-words">
               {currentScene.heading || 'UNNAMED SCENE'}
             </h3>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {currentScene.location && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-[#0B0E14] text-slate-300 border border-[#1E2638]">
-                <MapPin className="w-3 h-3 text-blue-400" />
+              <span className="chip chip-amber">
+                <MapPin className="w-3 h-3 text-[#B97A0B]" aria-hidden="true" />
                 {currentScene.location}
               </span>
             )}
             {currentScene.time_of_day && (
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium bg-[#0B0E14] text-slate-300 border border-[#1E2638]">
-                <Clock className="w-3 h-3 text-amber-400" />
+              <span className="chip chip-teal">
+                <Clock className="w-3 h-3 text-[#0B7F74]" aria-hidden="true" />
                 {currentScene.time_of_day}
               </span>
             )}
           </div>
         </div>
 
-        {/* Scene Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Active Speakers */}
-          <div className="bg-[#0B0E14] rounded-lg p-3.5 border border-[#1E2638]">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 uppercase mb-2">
-              <Users className="w-3.5 h-3.5 text-blue-400" /> Speakers
+        {/* Scene stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-[#F1EDE4] rounded-lg p-3.5 border border-[#E4DCCB]">
+            <div className="eyebrow flex items-center gap-1.5 mb-2">
+              <Users className="w-3.5 h-3.5" aria-hidden="true" /> Speakers
             </div>
             <div className="flex flex-wrap gap-1.5">
               {currentScene.speakers && currentScene.speakers.length > 0 ? (
                 currentScene.speakers.map((sp, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                  <span key={i} className="chip chip-amber">
                     {sp}
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-slate-500 italic">No speakers identified</span>
+                <span className="text-xs text-[#A49B8B] italic">No speakers identified</span>
               )}
             </div>
           </div>
 
-          {/* Key Topics */}
-          <div className="bg-[#0B0E14] rounded-lg p-3.5 border border-[#1E2638]">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 uppercase mb-2">
-              <Tag className="w-3.5 h-3.5 text-cyan-400" /> Topics
+          <div className="bg-[#F1EDE4] rounded-lg p-3.5 border border-[#E4DCCB]">
+            <div className="eyebrow flex items-center gap-1.5 mb-2">
+              <Tag className="w-3.5 h-3.5" aria-hidden="true" /> Topics
             </div>
             <div className="flex flex-wrap gap-1.5">
               {topics.length > 0 ? (
                 topics.slice(0, 5).map((t, i) => (
-                  <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                  <span key={i} className="chip chip-neutral">
                     {t.keyword}
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-slate-500 italic">No topics extracted</span>
+                <span className="text-xs text-[#A49B8B] italic">No topics extracted</span>
               )}
             </div>
           </div>
 
-          {/* Sentiment */}
-          <div className="bg-[#0B0E14] rounded-lg p-3.5 border border-[#1E2638]">
-            <div className="flex items-center justify-between text-xs font-medium text-slate-400 uppercase mb-2">
-              <span>Tone & Score</span>
-              <span className="font-mono text-slate-300">{(sentiment.compound || 0).toFixed(2)}</span>
+          <div className="bg-[#F1EDE4] rounded-lg p-3.5 border border-[#E4DCCB]">
+            <div className="flex items-center justify-between eyebrow mb-2">
+              <span>Tone &amp; Score</span>
+              <span className="font-mono tnum text-[#6E675B]">{(sentiment.compound || 0).toFixed(2)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 capitalize">
-                {sentiment.label || 'neutral'}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`chip ${toneChip}`}>{sentiment.label || 'neutral'}</span>
               {emotion.label && (
-                <span className="px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                <span className="chip chip-purple">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7C5CF0]" aria-hidden="true" />
                   {emotion.label}
                 </span>
               )}
@@ -131,50 +134,57 @@ export default function SceneExplorer({ segments }) {
           </div>
         </div>
 
-        {/* Scene Dialogues List */}
+        {/* Dialogue */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-bold text-white flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-blue-400" />
+            <h4 className="text-sm font-bold text-[#221E1A] flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-[#E5484D]" aria-hidden="true" />
               Dialogue Breakdown ({dialogueLines.length} lines)
             </h4>
           </div>
 
           {dialogueLines.length > 0 ? (
-            <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-              {dialogueLines.map((d, i) => (
-                <div
-                  key={i}
-                  className="bg-[#0B0E14] rounded-lg p-3 border border-[#1E2638] flex items-start gap-3"
-                >
-                  <div className="h-7 w-7 rounded bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-xs font-bold text-blue-300 shrink-0 font-mono">
-                    {(d.speaker || '?').charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-blue-300">
-                        {d.speaker || 'UNKNOWN'}
-                      </span>
-                      {d.parenthetical && (
-                        <span className="text-[11px] text-slate-400 italic">
-                          ({d.parenthetical})
+            <ul className="flex flex-col gap-2 max-h-96 overflow-y-auto pr-1">
+              {dialogueLines.map((d, i) => {
+                const lineTone =
+                  d.sentiment?.label === 'positive'
+                    ? 'chip-pos'
+                    : d.sentiment?.label === 'negative'
+                    ? 'chip-neg'
+                    : null;
+                return (
+                  <li
+                    key={i}
+                    className="bg-[#F7F3EC] rounded-lg p-3 border border-[#E4DCCB] flex items-start gap-3"
+                  >
+                    <span
+                      className="h-7 w-7 rounded bg-[#FEF3E2] border border-[#F6DFB2] flex items-center justify-center text-xs font-bold text-[#B97A0B] shrink-0 font-mono"
+                      aria-hidden="true"
+                    >
+                      {(d.speaker || '?').charAt(0).toUpperCase()}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-[#B97A0B] uppercase tracking-wide">
+                          {d.speaker || 'UNKNOWN'}
                         </span>
-                      )}
+                        {d.parenthetical && (
+                          <span className="text-[11px] text-[#6E675B] italic">({d.parenthetical})</span>
+                        )}
+                        {lineTone && <span className={cn('chip', lineTone)}>{d.sentiment.label}</span>}
+                      </div>
+                      <p className="text-xs text-[#221E1A] mt-1 leading-relaxed break-words">{d.text}</p>
                     </div>
-                    <p className="text-xs text-slate-200 mt-1 leading-relaxed font-sans">
-                      {d.text}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
-            <div className="bg-[#0B0E14] rounded-lg p-4 text-center text-xs text-slate-400 border border-[#1E2638]">
-              Dialogue lines not cached for this scene.
+            <div className="bg-[#F7F3EC] rounded-lg p-4 text-center text-xs text-[#A49B8B] border border-[#E4DCCB]">
+              Dialogue lines not cached for this scene — re-analyze with dialogue included to view them.
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

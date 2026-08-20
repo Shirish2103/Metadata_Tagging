@@ -12,7 +12,6 @@ torch
 torchvision
 fastapi
 uvicorn
-streamlit
 pydantic
 tqdm
 python-multipart

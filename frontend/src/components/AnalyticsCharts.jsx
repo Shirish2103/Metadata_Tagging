@@ -1,135 +1,121 @@
 import React from 'react';
 import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  Cell,
+  BarChart, Bar, AreaChart, Area,
+  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend,
 } from 'recharts';
-import { TrendingUp, BarChart3 } from 'lucide-react';
 
-export default function AnalyticsCharts({ segments }) {
-  if (!segments || segments.length === 0) return null;
+const COLORS = {
+  bar: '#E5484D',
+  area: '#0E9488',
+  grid: '#E4DCCB',
+  tick: '#6E675B',
+  pie: ['#E5484D', '#F59E0B', '#0E9488', '#7C5CF0', '#1FA45C'],
+};
 
-  // Prepare Sentiment Trajectory Data
-  const sentimentData = segments.map((s, idx) => ({
-    scene: `S${s.segment_id || idx + 1}`,
-    compound: Number(((s.sentiment || {}).compound || 0).toFixed(2)),
-    heading: s.heading || `Scene ${idx + 1}`,
+const TOOLTIP_STYLE = {
+  background: '#FFFFFF',
+  border: '1px solid #E4DCCB',
+  borderRadius: 8,
+  fontSize: 12,
+  color: '#221E1A',
+};
+
+export default function AnalyticsCharts({ overall }) {
+  if (!overall) return null;
+
+  const topicChartData = (overall.topics || []).slice(0, 8).map((t) => ({
+    name: t.keyword,
+    score: Number((t.score * 100).toFixed(1)),
   }));
 
-  // Prepare Emotion Distribution Data
-  const emotionCounts = {};
-  segments.forEach((s) => {
-    const label = (s.emotion || {}).label || 'neutral';
-    emotionCounts[label] = (emotionCounts[label] || 0) + 1;
-  });
-
-  const emotionData = Object.entries(emotionCounts).map(([label, count]) => ({
-    emotion: label.toUpperCase(),
-    count,
+  const emotionChartData = (overall.emotions || []).map((e) => ({
+    name: e.label,
+    value: Number((e.probability * 100).toFixed(1)),
   }));
 
-  const COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#10B981', '#F59E0B', '#64748B'];
+  const sentimentTimeline = (overall.sentiment_timeline || []).map((s, i) => ({
+    scene: `S${i + 1}`,
+    score: Number(s.compound.toFixed(2)),
+  }));
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8 animate-fade-in">
-      
-      {/* Chart 1: Sentiment Trajectory */}
-      <div className="ui-card rounded-xl p-5 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-blue-400" />
-                Sentiment Trajectory Across Scenes
-              </h3>
-              <p className="text-xs text-slate-400">VADER Compound Score (-1.0 Negative to +1.0 Positive)</p>
-            </div>
-          </div>
-
-          <div className="h-60 w-full mt-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 animate-fade-in">
+      {overall.topics?.length > 0 && (
+        <div className="ui-card rounded-xl p-6">
+          <h4 className="text-sm font-bold text-[#221E1A] mb-4">Top Topics (RAKE + KeyBERT)</h4>
+          <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={sentimentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2638" vertical={false} />
-                <XAxis dataKey="scene" stroke="#64748B" fontSize={11} tickLine={false} />
-                <YAxis domain={[-1, 1]} stroke="#64748B" fontSize={11} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#121721',
-                    borderColor: '#1E2638',
-                    borderRadius: '8px',
-                    color: '#E2E8F0',
-                    fontSize: '12px',
-                  }}
-                  formatter={(val) => [`Score: ${val}`, 'Sentiment']}
-                  labelFormatter={(lbl) => `${lbl}`}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="compound"
-                  stroke="#3B82F6"
-                  strokeWidth={2}
-                  fillOpacity={1}
-                  fill="url(#sentimentGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart 2: Emotion Distribution Bar Chart */}
-      <div className="ui-card rounded-xl p-5 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-purple-400" />
-                Emotion Distribution
-              </h3>
-              <p className="text-xs text-slate-400">Frequency of detected emotions across screenplay scenes</p>
-            </div>
-          </div>
-
-          <div className="h-60 w-full mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={emotionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1E2638" vertical={false} />
-                <XAxis dataKey="emotion" stroke="#64748B" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748B" fontSize={11} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#121721',
-                    borderColor: '#1E2638',
-                    borderRadius: '8px',
-                    color: '#E2E8F0',
-                    fontSize: '12px',
-                  }}
-                  formatter={(val) => [`${val} scenes`, 'Count']}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {emotionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
+              <BarChart data={topicChartData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
+                <CartesianGrid stroke={COLORS.grid} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: COLORS.tick, fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={50} />
+                <YAxis tick={{ fill: COLORS.tick, fontSize: 11 }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Bar dataKey="score" fill={COLORS.bar} radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+      )}
 
+      {emotionChartData.length > 0 && (
+        <div className="ui-card rounded-xl p-6">
+          <h4 className="text-sm font-bold text-[#221E1A] mb-4">Emotion Distribution</h4>
+          <div className="h-64 flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={emotionChartData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={3}
+                  stroke="#FFFFFF"
+                >
+                  {emotionChartData.map((_, i) => (
+                    <Cell key={i} fill={COLORS.pie[i % COLORS.pie.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v) => `${v}%`} />
+                <Legend
+                  wrapperStyle={{ fontSize: 11, color: '#6E675B' }}
+                  iconSize={8}
+                  formatter={(name) => <span className="text-[#6E675B]">{name}</span>}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {sentimentTimeline.length > 0 && (
+        <div className="ui-card rounded-xl p-6 lg:col-span-2">
+          <h4 className="text-sm font-bold text-[#221E1A] mb-4">Sentiment Timeline by Scene</h4>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sentimentTimeline} margin={{ top: 4, right: 8, bottom: 4, left: -20 }}>
+                <defs>
+                  <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={COLORS.area} stopOpacity={0.35} />
+                    <stop offset="100%" stopColor={COLORS.area} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={COLORS.grid} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="scene" tick={{ fill: COLORS.tick, fontSize: 11 }} interval={Math.ceil(sentimentTimeline.length / 12) - 1} />
+                <YAxis domain={[-1, 1]} tick={{ fill: COLORS.tick, fontSize: 11 }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Area type="monotone" dataKey="score" stroke={COLORS.area} strokeWidth={2} fill="url(#sentimentGradient)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {!overall.topics?.length && !emotionChartData.length && !overall.sentiment_timeline?.length && (
+        <div className="ui-card rounded-xl p-10 text-center lg:col-span-2">
+          <p className="text-sm text-[#A49B8B]">No chart data available — analyze a script first.</p>
+        </div>
+      )}
     </div>
   );
 }

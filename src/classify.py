@@ -54,16 +54,15 @@ def _training_frame():
         genres = _genres_list(m.iloc[0].get("genres"))
         if not genres:
             continue
-        text = _script_sample(r.get("script_path"))
+        script_text = _script_sample(r.get("script_path"))
+        meta_parts = [str(m.iloc[0].get(c)) for c in ("plot", "keywords", "synopsis", "plot outline", "title")]
+        meta_text = " ".join(p for p in meta_parts if isinstance(p, str))
+        text = script_text + (" " + meta_text if script_text else "")
         if not text:
-            parts = [str(m.iloc[0].get(c)) for c in ("plot", "keywords", "synopsis", "plot outline", "title")]
-            text = " ".join(p for p in parts if isinstance(p, str))
-        else:
-            parts = [str(m.iloc[0].get(c)) for c in ("plot", "keywords", "synopsis", "plot outline", "title")]
-            text = text + " " + " ".join(p for p in parts if isinstance(p, str))
+            text = meta_text
         if len(text) < 200:
             continue
-        rows.append((text, genres, "script" if _script_sample(r.get("script_path")) else "meta"))
+        rows.append((text, genres, "script" if script_text else "meta"))
         seen.add(imdbid)
 
     # add metadata-only rows for movies without scripts (more coverage)
@@ -144,23 +143,34 @@ def _load_model():
 
 
 def load_classifier():
+    """Load the trained classifier, or return (None, []) if not trained yet.
+
+    Training is intentionally NOT triggered on demand here — that happens
+    explicitly via setup.py / train_model() to avoid long stalls inside a request.
+    """
     if not MODEL_PATH.exists():
-        train_model()
+        logger.warning("Genre classifier model missing (%s); call setup.py / train_model() first.", MODEL_PATH)
+        return None, []
     data = _load_model()
     if isinstance(data, dict):
-        return data["clf"], data["genres"]
+        return data.get("clf"), data.get("genres", [])
     return data, []
 
 
 def predict_genres(text: str, top_n: int = 5) -> list[dict]:
     clf, genres = load_classifier()
-    if not genres:
+    if clf is None or not genres:
         return []
-    probs = clf.predict_proba([text])
+    try:
+        probs = clf.predict_proba([text])
+    except Exception as exc:
+        logger.warning("Genre prediction failed: %s", exc)
+        return []
     scored = []
     for i, g in enumerate(genres[: len(probs)]):
         p = probs[i]
-        pos = float(p[0][1])
+        # A target that only ever saw one class exposes shape (n_samples, 1)
+        pos = float(p[0][1]) if p.shape[1] > 1 else 0.0
         scored.append({"genre": g, "score": round(pos, 4)})
     scored.sort(key=lambda x: -x["score"])
     top = [s for s in scored if s["score"] >= 0.25][:top_n]

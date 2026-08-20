@@ -180,10 +180,22 @@ def scene_topics(script, scene_texts: list[str], top_n: int = 8) -> list[list[di
     return out
 
 
+def _normalize_scores(items: list[dict]) -> list[dict]:
+    """Min-max scale scores to [0, 1] so different sources are comparable."""
+    if not items:
+        return items
+    lo = min(i["score"] for i in items)
+    hi = max(i["score"] for i in items)
+    span = hi - lo
+    if span <= 0:
+        return [{**i, "score": 1.0} for i in items]
+    return [{**i, "score": round((i["score"] - lo) / span, 3)} for i in items]
+
+
 def overall_topics(script, top_n: int = 25) -> list[dict]:
     text = " ".join(d.text for d in script.all_dialogue)
     text += " " + " ".join(script.all_action)
-    rake = rake_keywords(text, top_n=top_n)
+    rake = _normalize_scores(rake_keywords(text, top_n=top_n))
     kb = keybert_keywords(text, top_n=top_n)
     merged = {k["keyword"]: k for k in (rake + kb)}
     return sorted(merged.values(), key=lambda k: -k["score"])[:top_n]

@@ -1,3 +1,12 @@
+# ---- Stage 1: Build the React frontend ----
+FROM node:22-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# ---- Stage 2: Python API + static frontend host ----
 FROM python:3.12-slim
 
 # Install system dependencies if any are needed
@@ -16,6 +25,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Expose ports for both the API (8000) and the UI (8501)
+# Copy the built React frontend from the first stage
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
+
+# Expose the API / web port
 EXPOSE 8000
-EXPOSE 8501

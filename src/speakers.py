@@ -72,9 +72,6 @@ def _is_plausible_speaker(s: dict, min_lines: int = 2) -> bool:
         return False
     if name.upper() in _NOISE_NAMES:
         return False
-    # single-word generic technical terms are usually screen text
-    if len(name.split()) == 1 and name.upper() in _NOISE_NAMES:
-        return False
     return True
 
 

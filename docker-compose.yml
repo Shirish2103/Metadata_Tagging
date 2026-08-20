@@ -12,17 +12,4 @@ services:
       - ./outputs:/app/outputs
     environment:
       - PYTHONUNBUFFERED=1
-
-  ui:
-    build: .
-    container_name: hackathon_ui
-    command: python -m streamlit run ui/app.py
-    ports:
-      - "8501:8501"
-    depends_on:
-      - api
-    volumes:
-      - ./data:/app/data
-      - ./outputs:/app/outputs
-    environment:
-      - PYTHONUNBUFFERED=1
+      - DATASET_ROOT=${DATASET_ROOT:-}
